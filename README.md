@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Соревновательный филворд
 
-## Getting Started
+MVP веб-приложения по `spec.md`: общий матч, поле 10x10, игроки, таймер,
+серверная проверка слов и обновление состояния через polling.
 
-First, run the development server:
+## Стек
+
+- Next.js App Router
+- TypeScript
+- Drizzle ORM
+- SQLite/libSQL через `@libsql/client`
+- BetterAuth
+
+Игровые данные теперь сохраняются в SQLite-файл `local.db` по умолчанию. BetterAuth
+подключен к той же Drizzle-схеме и доступен через `/api/auth/[...all]`.
+Профиль пользователя хранит имя и avatar data URL в таблице `user`.
+
+## Переменные окружения
+
+Можно создать `.env.local`:
+
+```bash
+DATABASE_URL=file:local.db
+BETTER_AUTH_SECRET=replace-with-long-random-secret
+BETTER_AUTH_URL=http://localhost:3000
+```
+
+Если `DATABASE_URL` не задан, приложение использует `file:local.db`.
+
+## Запуск
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте [http://localhost:3000/auth](http://localhost:3000/auth), создайте
+аккаунт или войдите, затем приложение перенаправит в лобби `/`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Таблицы создаются автоматически при первом обращении к API. Для работы через
+Drizzle Kit доступны команды:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run db:generate
+npm run db:push
+npm run db:studio
+```
 
-## Learn More
+## Игровой сценарий
 
-To learn more about Next.js, take a look at the following resources:
+1. На главной странице выберите игру с ботом или мультиплеер.
+2. Для мультиплеера создайте комнату на 2 или 3 игроков.
+3. Второй игрок выбирает комнату в списке активных комнат.
+4. Когда комната заполнена, матч стартует автоматически.
+5. Выделяйте соседние клетки слова и отправляйте выбор.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Бот в одиночном режиме ходит с задержкой и не обгоняет игрока по счету.
+Активные комнаты отображаются на игровых страницах и скрыты на странице входа.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Основные файлы
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/server/db/schema.ts` - Drizzle-схема BetterAuth и игры.
+- `src/server/db/client.ts` - libSQL/Drizzle client и bootstrap таблиц.
+- `src/lib/auth.ts` - конфигурация BetterAuth.
+- `src/server/auth.ts` - чтение текущей сессии на сервере.
+- `src/app/auth/page.tsx` - страница входа и регистрации.
+- `src/app/auth/AuthForm.tsx` - клиентская форма login/register.
+- `src/app/LobbyClient.tsx` - лобби, выбор режима и список комнат.
+- `src/app/ActiveRoomsList.tsx` - общий список активных комнат.
+- `src/app/GlobalRoomsDock.tsx` - список комнат на страницах вне регистрации.
+- `src/app/match/[matchId]/page.tsx` - комната ожидания.
+- `src/app/api/auth/[...all]/route.ts` - BetterAuth Next.js route.
+- `src/app/api/lobby/route.ts` - API комнат и matchmaking.
+- `src/app/api/profile/route.ts` - обновление имени и аватара.
+- `src/app/api/match/route.ts` - API матча.
+- `src/server/services/lobby.service.ts` - создание комнат, join и bot match.
+- `src/server/services/game.service.ts` - жизненный цикл матча в БД.
+- `src/server/services/grid.service.ts` - генерация поля 10x10.
+- `src/server/services/word.service.ts` - серверная проверка слова.
