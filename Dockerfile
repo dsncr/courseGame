@@ -1,9 +1,11 @@
 # syntax=docker.io/docker/dockerfile:1
 
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 FROM base AS deps
-RUN apk add --no-cache libc6-compat
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libc6 \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -22,8 +24,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs nextjs
 
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
